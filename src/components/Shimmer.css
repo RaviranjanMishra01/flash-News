@@ -1,0 +1,145 @@
+.shimmer-container {
+  width: 100%;
+  padding: 20px 0;
+}
+
+.shimmer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.shimmer-grid.featured-shimmer {
+  grid-template-columns: 1fr;
+}
+
+.shimmer-card {
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Featured Shimmer Card */
+.shimmer-card.featured {
+  display: grid;
+  grid-template-columns: 50% 50%;
+  min-height: 400px;
+}
+
+.shimmer-card.featured .shimmer-image {
+  height: 400px;
+}
+
+.shimmer-card.featured .shimmer-content {
+  padding: 40px;
+}
+
+/* Default Shimmer Card */
+.shimmer-image {
+  width: 100%;
+  height: 200px;
+  background: #e0e0e0;
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-content {
+  padding: 20px;
+}
+
+.shimmer-title,
+.shimmer-title-short,
+.shimmer-description,
+.shimmer-description-short {
+  height: 16px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-title {
+  width: 90%;
+  height: 20px;
+}
+
+.shimmer-title-short {
+  width: 60%;
+  height: 20px;
+}
+
+.shimmer-description {
+  width: 100%;
+  height: 14px;
+}
+
+.shimmer-description-short {
+  width: 75%;
+  height: 14px;
+  margin-bottom: 20px;
+}
+
+.shimmer-meta {
+  display: flex;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.shimmer-meta-item {
+  width: 100px;
+  height: 12px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer Animation */
+.shimmer-animate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .shimmer-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .shimmer-card.featured {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .shimmer-card.featured .shimmer-image {
+    height: 200px;
+  }
+
+  .shimmer-card.featured .shimmer-content {
+    padding: 20px;
+  }
+}
