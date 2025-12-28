@@ -1,26 +1,19 @@
 import { useState, useEffect } from 'react';
 
-const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) => {
+const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 10) => {
+  // NewsData.io free tier allows max 10 articles per request
+  const actualPageSize = Math.min(pageSize, 10);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
-  const [totalResults, setTotalResults] = useState(0);
+  const [nextPage, setNextPage] = useState(null);
 
   // Multiple API Keys for rotation
   const API_KEYS = [
-    import.meta.env.VITE_NEWS_API_KEY_1 || 'YOUR_FIRST_API_KEY',
-    import.meta.env.VITE_NEWS_API_KEY_2 || 'YOUR_SECOND_API_KEY',
-    import.meta.env.VITE_NEWS_API_KEY_3 || 'YOUR_THIRD_API_KEY',
-  ].filter(key => key !== 'YOUR_FIRST_API_KEY' && key !== 'YOUR_SECOND_API_KEY' && key !== 'YOUR_THIRD_API_KEY');
-
-  const BASE_URL = 'https://newsapi.org/v2';
-
-  // Get a random API key from the array
-  const getRandomApiKey = () => {
-    const randomIndex = Math.floor(Math.random() * API_KEYS.length);
-    return API_KEYS[randomIndex];
-  };
+    'pub_69e2b0e588504f2f93e10dc6f7498dd6',
+    'pub_2ff0d9d688d14283b67bfe266a99fa34',
+  ];
 
   // Try fetching with different API keys if one fails
   const fetchWithRetry = async (url, maxRetries = API_KEYS.length) => {
@@ -28,8 +21,10 @@ const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) 
     
     for (let i = 0; i < maxRetries; i++) {
       try {
-        const apiKey = API_KEYS[i % API_KEYS.length];
-        const urlWithKey = `${url}&apiKey=${apiKey}`;
+        const apiKey = API_KEYS[i];
+        const urlWithKey = url.replace('APIKEY_PLACEHOLDER', apiKey);
+        
+        console.log(`Trying API Key ${i + 1}...`);
         
         const response = await fetch(urlWithKey);
         
@@ -40,7 +35,8 @@ const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) 
         }
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
@@ -50,7 +46,7 @@ const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) 
         console.error(`Attempt ${i + 1} failed:`, err.message);
         
         // If it's not a rate limit error, don't retry
-        if (err.message.includes('status: 401') || err.message.includes('status: 403')) {
+        if (!err.message.includes('429') && !err.message.includes('rate')) {
           throw err;
         }
       }
@@ -58,10 +54,9 @@ const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) 
     
     throw lastError || new Error('All API keys exhausted');
   };
-
+  
   useEffect(() => {
     const fetchNews = async () => {
-      // Don't fetch if we know there's no more data
       if (!hasMore && page > 1) {
         setLoading(false);
         return;
@@ -74,53 +69,75 @@ const useFetchNews = (category = '', searchQuery = '', page = 1, pageSize = 12) 
         let url = '';
         
         if (searchQuery) {
-          // Search for specific query
-          url = `${BASE_URL}/everything?q=${searchQuery}&language=en&sortBy=publishedAt&page=${page}&pageSize=${pageSize}`;
-        } else if (category) {
-          // Fetch by category
-          url = `${BASE_URL}/top-headlines?category=${category}&language=en&page=${page}&pageSize=${pageSize}`;
+          // Search uses /news endpoint with q parameter
+          url = `https://newsdata.io/api/1/news?apikey=APIKEY_PLACEHOLDER&q=${encodeURIComponent(searchQuery)}&language=en`;
+        } else if (category && category !== 'general') {
+          // Category uses /latest endpoint
+          url = `https://newsdata.io/api/1/latest?apikey=APIKEY_PLACEHOLDER&category=${category}&language=en`;
         } else {
-          // Fetch top headlines (for home page)
-          url = `${BASE_URL}/top-headlines?country=us&language=en&page=${page}&pageSize=${pageSize}`;
+          // Default latest news
+          url = `https://newsdata.io/api/1/latest?apikey=APIKEY_PLACEHOLDER&language=en`;
+        }
+        
+        // Add page size (max 10 for free tier)
+        url += `&size=${actualPageSize}`;
+
+        // Add pagination token if available (for page > 1)
+        if (page > 1 && nextPage) {
+          url += `&page=${nextPage}`;
         }
 
+        // Use fetchWithRetry instead of direct fetch
         const data = await fetchWithRetry(url);
         
-        if (data.status === 'ok') {
-          // Filter out articles with removed content
-          const validArticles = data.articles.filter(
-            article => article.title !== "[Removed]" && 
-                       article.description !== null &&
-                       article.urlToImage !== null
+        if (data.status === 'success' && data.results) {
+          // Filter out articles with missing content
+          const validArticles = data.results.filter(
+            article => article.title && 
+                       article.description &&
+                       article.image_url
           );
+
+          // Map NewsData.io response to match your old structure
+          const formattedArticles = validArticles.map(article => ({
+            title: article.title,
+            description: article.description,
+            url: article.link,
+            urlToImage: article.image_url,
+            publishedAt: article.pubDate,
+            source: {
+              name: article.source_id || 'Unknown'
+            },
+            author: article.creator ? article.creator.join(', ') : 'Unknown',
+            content: article.content || article.description
+          }));
 
           // If page is 1, replace news, otherwise append
           if (page === 1) {
-            setNews(validArticles);
+            setNews(formattedArticles);
           } else {
-            setNews(prevNews => [...prevNews, ...validArticles]);
+            setNews(prevNews => [...prevNews, ...formattedArticles]);
           }
 
-          setTotalResults(data.totalResults);
-          
-          // Check if there are more articles to load
-          const totalPages = Math.ceil(data.totalResults / pageSize);
-          setHasMore(page < totalPages && validArticles.length > 0);
+          // Set next page token for pagination
+          setNextPage(data.nextPage);
+          setHasMore(!!data.nextPage && formattedArticles.length > 0);
         } else {
           throw new Error(data.message || 'Failed to fetch news');
         }
       } catch (err) {
         setError(err.message);
         console.error('Error fetching news:', err);
+        setHasMore(false);
       } finally {
         setLoading(false);
       }
     };
 
     fetchNews();
-  }, [category, searchQuery, page, pageSize]);
+  }, [category, searchQuery, page]);
 
-  return { news, loading, error, hasMore, totalResults };
+  return { news, loading, error, hasMore, totalResults: news.length };
 };
 
 export default useFetchNews;
