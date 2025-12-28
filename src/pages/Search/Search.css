@@ -1,0 +1,74 @@
+.search-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+  padding: 80px 0 40px;
+}
+
+.search-header {
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 3px solid #c00;
+}
+
+.search-title {
+  font-size: 48px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.search-query {
+  font-size: 20px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.search-query strong {
+  color: #c00;
+}
+
+.search-count {
+  font-size: 16px;
+  color: #999;
+}
+
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.no-results {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.no-results h2 {
+  font-size: 32px;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.no-results p {
+  font-size: 18px;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .search-page {
+    padding: 70px 0 20px;
+  }
+
+  .search-title {
+    font-size: 32px;
+  }
+
+  .search-query {
+    font-size: 18px;
+  }
+
+  .news-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
